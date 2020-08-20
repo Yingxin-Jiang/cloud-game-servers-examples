@@ -67,11 +67,14 @@ EOF
   # Optional: Store the secret ca.crt in a file to be used by the client for the server authentication
   TLS_CA_FILE=$CERT_FOLDER/ca.crt
   TLS_CA_VALUE=`kubectl get secret allocator-tls -n agones-system -ojsonpath='{.data.ca\.crt}'`
-  echo ${TLS_CA_VALUE} | base64 -d > ${TLS_CA_FILE}
 
-  # In case of MacOS
-  # echo ${TLS_CA_VALUE} | base64 -D > ${TLS_CA_FILE}
-
+  if [ "$(uname)" == "Darwin" ]; then
+      # For Mac OS
+      echo ${TLS_CA_VALUE} | base64 -D > ${TLS_CA_FILE}
+  else
+      echo ${TLS_CA_VALUE} | base64 -d > ${TLS_CA_FILE}
+  fi
+ 
   # Add ca.crt to the allocator-tls-ca Secret
   kubectl get secret allocator-tls-ca -o json -n agones-system | jq '.data["tls-ca.crt"]="'${TLS_CA_VALUE}'"' | kubectl apply -f -
 }
@@ -84,10 +87,14 @@ client_cert() {
 
   openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ${KEY_FILE} -out ${CERT_FILE} -subj "/C=/ST=/L=/O=/OU=/CN="
 
-  CERT_FILE_VALUE=`cat ${CERT_FILE} | base64 -w 0`
 
-  # In case of MacOS
-  # CERT_FILE_VALUE=`cat ${CERT_FILE} | base64`
+  if [ "$(uname)" == "Darwin" ]; then
+      # For Mac OS
+      ERT_FILE_VALUE=`cat ${CERT_FILE} | base64`
+  else
+      CERT_FILE_VALUE=`cat ${CERT_FILE} | base64 -w 0` 
+  fi
+ 
 
   # white-list client certificate
   kubectl get secret allocator-client-ca -o json -n agones-system | jq '.data["client_trial.crt"]="'${CERT_FILE_VALUE}'"' | kubectl apply -f -
